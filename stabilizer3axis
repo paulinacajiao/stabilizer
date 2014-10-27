@@ -1,0 +1,98 @@
+#include <Wire.h>
+#include <L3G.h>
+#include <Servo.h>
+
+L3G gyro;
+Servo myservox;
+Servo myservoy;
+Servo myservoz;
+
+int x; //servo input x
+int y;
+int z;
+
+int sampleNum=500;
+int dc_offsetx=5;
+int dc_offsety=5;
+int dc_offsetz=5;
+int prev_ratex=0;
+int prev_ratey=0;
+int prev_ratez=0;
+double anglex=0; //gyro output after some calculations
+double angley=0;
+double anglez=0;
+
+unsigned long time;
+int sampleTime=2;
+int ratex;
+int ratey;
+int ratez;
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+  myservox.attach(3);
+  myservoy.attach(5);
+  myservoz.attach(6);
+
+  if (!gyro.init())
+  {
+    Serial.println("Failed to autodetect gyro type!");
+    while (1);
+  }
+
+  gyro.enableDefault();
+  
+
+}
+
+void loop() {
+ // Every 10 ms take a sample from the gyro
+ if(millis() - time > sampleTime)
+ {
+ time = millis(); // update the time to get the next sample
+ gyro.read();
+ ratex=((int)gyro.g.x-dc_offsetx)/100;
+ ratey=((int)gyro.g.y-dc_offsety)/100;
+ ratez=((int)gyro.g.z-dc_offsetz)/100;
+ 
+ anglex += ((double)(prev_ratex + ratex) * sampleTime) / 2000;
+ angley += ((double)(prev_ratey + ratey) * sampleTime) / 2000;
+ anglez += ((double)(prev_ratez + ratez) * sampleTime) / 2000;
+ 
+ // remember the current speed for the next loop rate integration.
+ prev_ratex = ratex;
+ prev_ratey = ratey;
+ prev_ratez = ratez;
+
+if (anglex < 0)
+  anglex =0;
+ else if (anglex >= 360)
+   anglex = 360;
+ if (angley < 0)
+  angley =0;
+ else if (angley >= 360)
+   angley = 360;
+ if (anglez < 0)
+  anglez =0;
+ else if (anglez >= 360)
+   anglez = 360;
+ 
+ Serial.print("x: ");
+ Serial.print(anglex);
+ Serial.print("\ty: ");
+ Serial.println(angley);
+ Serial.print("\tz: ");
+ Serial.println(anglez);
+ 
+ //convert gyro output to values for 0 to 180
+ x=map(anglex,0,10,180,0);
+ y=map(angley,0,10,0,180);
+ z=map(anglez,0,10,180,0);
+ 
+ //move servos
+ myservox.write(x);
+ myservoy.write(y);
+ myservoz.write(z);
+ }
+}
